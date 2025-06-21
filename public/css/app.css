@@ -1,0 +1,291 @@
+/* Estilos generales */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #e8f5e9;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+/* Navbar */
+.navbar {
+    padding: 0.5rem 0;
+}
+
+.navbar-dark.bg-success {
+    background-color: #2e7d32 !important;
+}
+
+.navbar-nav {
+    align-items: center;
+}
+
+.nav-link {
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+}
+
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 0.25rem;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
+}
+
+/* Contenedor principal */
+.container {
+    padding-right: 15px;
+    padding-left: 15px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+@media (min-width: 576px) {
+    .container {
+        max-width: 540px;
+    }
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 720px;
+    }
+}
+
+@media (min-width: 992px) {
+    .container {
+        max-width: 960px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1140px;
+    }
+}
+
+.mt-4 {
+    margin-top: 1.5rem !important;
+}
+
+/* Alertas */
+.alert {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+/* Footer */
+footer {
+    background-color: #f8f9fa !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.py-3 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+.mb-0 {
+    margin-bottom: 0 !important;
+}
+
+/* Estilos específicos para el login */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    margin: 2rem auto;
+}
+
+.login-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    text-align: center;
+}
+
+/* Encabezado */
+.login-header h1 {
+    margin: 0;
+    color: #2e7d32;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.login-header p {
+    margin: 5px 0 20px;
+    color: #2e7d32;
+    font-size: 14px;
+}
+.logo-container {
+    background-color: white;
+    padding: 0;
+    margin: 0 0 10px 0;
+    border-radius: 0;
+    border-bottom: 1px solid #f0f0f0;
+    width: 100%;
+    display: block;
+    overflow: hidden;
+}
+
+.login-logo {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Formulario */
+.mb-3 {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #2e7d32;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.25);
+}
+
+/* Checkbox */
+.form-check {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.form-check-input {
+    margin-right: 8px;
+}
+
+.form-check-label {
+    font-size: 14px;
+}
+
+/* Mensajes de error */
+.invalid-feedback {
+    color: #d32f2f;
+    font-size: 13px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Opciones del formulario */
+.options-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 15px 0;
+    font-size: 13px;
+}
+
+.forgot-password {
+    color: #2e7d32;
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+/* Botón de login */
+.btn-success {
+    width: 100%;
+    padding: 12px;
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-bottom: 15px;
+}
+
+.btn-success:hover {
+    background-color: #1b5e20;
+}
+
+/* Enlace de registro */
+.register-link {
+    font-size: 13px;
+    color: #666;
+}
+
+.register-link a {
+    color: #2e7d32;
+    text-decoration: none;
+    margin-left: 5px;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .navbar-collapse {
+        padding: 1rem 0;
+    }
+    
+    .nav-link {
+        padding: 0.5rem 0;
+    }
+    
+    .dropdown-menu {
+        border: none;
+        box-shadow: none;
+    }
+    
+    .login-container {
+        padding: 15px;
+    }
+    
+    .login-card {
+        padding: 20px;
+    }
+}
