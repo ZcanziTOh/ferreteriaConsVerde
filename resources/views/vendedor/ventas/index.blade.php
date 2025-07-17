@@ -33,7 +33,7 @@
                     @elseif($venta->clienteJuridica)
                         {{ $venta->clienteJuridica->razSociClieJuri }}
                     @else
-                        Sin cliente
+                        <span style="text-transform: uppercase;">Cliente sin datos</span>
                     @endif
                 </td>
                 <td>S/ {{ number_format($venta->totalVent, 2) }}</td>

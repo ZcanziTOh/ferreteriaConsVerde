@@ -19,7 +19,9 @@ class Devolucion extends Model
         'IDUsu',
         'IDVent'
     ];
-
+    protected $casts = [
+        'fechDev' => 'datetime'
+    ];
     public function usuario()
     {
         return $this->belongsTo(User::class, 'IDUsu');

@@ -18,7 +18,6 @@
                 <th>Venta Relacionada</th>
                 <th>Motivo</th>
                 <th>Total Reembolso</th>
-                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -29,9 +28,6 @@
                 <td>#{{ $devolucion->venta->IDVent }}</td>
                 <td>{{ Str::limit($devolucion->motivDev, 50) }}</td>
                 <td>S/ {{ number_format($devolucion->totalRembDev, 2) }}</td>
-                <td>
-                    <a href="#" class="btn btn-sm btn-info">Ver</a>
-                </td>
             </tr>
             @endforeach
         </tbody>

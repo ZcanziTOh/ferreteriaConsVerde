@@ -12,7 +12,7 @@
             </ul>
         </div>
     @endif
-    <form action="{{ route('vendedor.devoluciones.store', $venta->IDVent) }}" method="POST">
+    <form action="{{ route('admin.devoluciones.store', $venta->IDVent) }}" method="POST">
         @csrf
         
         <div class="card mb-4">
@@ -95,7 +95,7 @@
         </div>
         
         <button type="submit" class="btn btn-primary">Registrar Devolución</button>
-        <a href="{{ route('vendedor.ventas.index') }}" class="btn btn-secondary">Cancelar</a>
+        <a href="{{ route('admin.ventas') }}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
 

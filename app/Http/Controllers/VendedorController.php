@@ -12,29 +12,35 @@ use App\Models\Devolucion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use App\Services\SunatService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class VendedorController extends Controller
-{
-    public function __construct()
+{   
+    protected $sunatService;
+    public function __construct(SunatService $sunatService)
     {
         $this->middleware('auth');
         $this->middleware('role:vendedor');
+        $this->sunatService = $sunatService;
     }
 
     public function dashboard()
     {
         $user = Auth::user();
         
-        $ventasHoy = Venta::where('IDUsu', $user->id)
+        $ventasHoy = Venta::where('IDUsu', auth()->id())
             ->whereDate('fechVent', today())
             ->count();
         
-        $totalVentasHoy = Venta::where('IDUsu', $user->id)
+        $totalVentasHoy = Venta::where('IDUsu', auth()->id())
             ->whereDate('fechVent', today())
             ->sum('totalVent');
 
         // Agregar consulta para las últimas ventas
-        $ultimasVentas = Venta::where('IDUsu', $user->id)
+        $ultimasVentas = Venta::where('IDUsu', auth()->id())
             ->orderBy('fechVent', 'desc')
             ->take(5) 
             ->get();
@@ -58,10 +64,52 @@ class VendedorController extends Controller
             'productos' => 'required|array|min:1',
             'productos.*.IDProd' => 'required|exists:productos,IDProd',
             'productos.*.cantidad' => 'required|integer|min:1',
-            'tipo_cliente' => 'required|in:natural,juridico',
+            'productos.*.descuento' => 'nullable|numeric|min:0|max:100',
+            'tipo_cliente' => 'required|in:natural,juridico,none',
             'cliente_id' => 'nullable|string|regex:/^([NJ]-\d+)$/',
             'observaciones' => 'nullable|string',
+            'docIdenClieNat' => 'nullable|string|max:15|unique:cliente_natural,docIdenClieNat',
+            'nomClieNat' => 'nullable|string|max:100',
+            'apelClieNat' => 'nullable|string|max:100',
+            'direccion' => 'nullable|string|max:200',
+            'rucClieJuri' => 'nullable|string|size:11|unique:cliente_juridica,rucClieJuri',
+            'razSociClieJuri' => 'nullable|string|max:100',
+            'dirfiscClieJuri' => 'nullable|string|max:200',
         ]);
+
+        // Guardar nuevo cliente si es necesario
+        $cliente = null;
+        $cliente_id = null;
+        
+        if ($request->tipo_cliente === 'natural') {
+            if ($request->filled('docIdenClieNat')) {
+                // Crear nuevo cliente natural
+                $cliente = ClienteNatural::create([
+                    'docIdenClieNat' => $request->docIdenClieNat,
+                    'nomClieNat' => $request->nomClieNat,
+                    'apelClieNat' => $request->apelClieNat,
+                    'direccion' => $request->direccion,
+                ]);
+                $cliente_id = 'N-'.$cliente->IDClieNat;
+            } elseif ($request->cliente_id) {
+                $cliente = ClienteNatural::find(explode('-', $request->cliente_id)[1]);
+                $cliente_id = $request->cliente_id;
+            }
+        } elseif ($request->tipo_cliente === 'juridico') {
+            if ($request->filled('rucClieJuri')) {
+                // Crear nuevo cliente jurídico
+                $cliente = ClienteJuridica::create([
+                    'rucClieJuri' => $request->rucClieJuri,
+                    'razSociClieJuri' => $request->razSociClieJuri,
+                    'dirfiscClieJuri' => $request->dirfiscClieJuri,
+                    'nomComClieJuri' => $request->razSociClieJuri, // Usamos razón social como nombre comercial por defecto
+                ]);
+                $cliente_id = 'J-'.$cliente->IDClieJuri;
+            } elseif ($request->cliente_id) {
+                $cliente = ClienteJuridica::find(explode('-', $request->cliente_id)[1]);
+                $cliente_id = $request->cliente_id;
+            }
+        }
 
         $productosSeleccionados = [];
         $subtotal = 0;
@@ -69,30 +117,28 @@ class VendedorController extends Controller
         foreach ($request->productos as $item) {
             $producto = Producto::find($item['IDProd']);
             $cantidad = $item['cantidad'];
+            $descuento = $item['descuento'] ?? 0;
 
             if ($producto->stockProd < $cantidad) {
                 return back()->withErrors(['stock' => "No hay suficiente stock para el producto {$producto->nomProd}"]);
             }
 
+            $precioConDescuento = $producto->precUniProd * (1 - $descuento / 100);
+
             $productosSeleccionados[] = [
                 'producto' => $producto,
                 'cantidad' => $cantidad,
+                'descuento' => $descuento,
                 'precio' => $producto->precUniProd,
-                'subtotal' => $cantidad * $producto->precUniProd,
+                'precio_con_descuento' => $precioConDescuento,
+                'subtotal' => $cantidad * $precioConDescuento,
             ];
 
-            $subtotal += $cantidad * $producto->precUniProd;
+            $subtotal += $cantidad * $precioConDescuento;
         }
 
         $igv = $subtotal * 0.18;
         $total = $subtotal + $igv;
-
-        $cliente = null;
-        if ($request->tipo_cliente === 'natural' && $request->cliente_id) {
-            $cliente = ClienteNatural::find($request->cliente_id);
-        } elseif ($request->tipo_cliente === 'juridico' && $request->cliente_id) {
-            $cliente = ClienteJuridica::find($request->cliente_id);
-        }
 
         return view('vendedor.cotizaciones.show', compact(
             'productosSeleccionados',
@@ -100,6 +146,7 @@ class VendedorController extends Controller
             'igv',
             'total',
             'cliente',
+            'cliente_id',
             'request'
         ));
     }
@@ -107,12 +154,10 @@ class VendedorController extends Controller
     // Métodos para ventas
     public function ventas()
     {
-        $user = Auth::user();
-        $ventas = Venta::with(['clienteNatural', 'clienteJuridica', 'comprobantes'])
-            ->where('IDUsu', $user->id)
+        $ventas = Venta::with(['clienteNatural', 'clienteJuridica', 'usuario.empleado'])
             ->orderBy('fechVent', 'desc')
             ->get();
-        
+            
         return view('vendedor.ventas.index', compact('ventas'));
     }
 
@@ -131,12 +176,13 @@ class VendedorController extends Controller
             'productos' => 'required|array|min:1',
             'productos.*.IDProd' => 'required|exists:productos,IDProd',
             'productos.*.cantidad' => 'required|integer|min:1',
+            'productos.*.descuento' => 'nullable|numeric|min:0|max:100',
             'metPagVent' => 'required|in:efectivo,tarjeta,yape,transferencia',
             'tipo_cliente' => 'required|in:natural,juridico,none',
             'cliente_id' => 'nullable|string|regex:/^([NJ]-\d+)$/',
-            'tipo_comprobante' => 'required|in:boleta,factura',
+            'tipo_comprobante' => 'required|in:boleta,factura,proforma',
         ]);
-
+        
         $user = Auth::user();
         $subtotal = 0;
         $detalles = [];
@@ -145,12 +191,16 @@ class VendedorController extends Controller
         foreach ($request->productos as $item) {
             $producto = Producto::find($item['IDProd']);
             $cantidad = $item['cantidad'];
+            $descuento = $item['descuento'] ?? 0;
 
             if ($producto->stockProd < $cantidad) {
                 return back()->withErrors(['stock' => "No hay suficiente stock para el producto {$producto->nomProd}"]);
             }
 
-            $subtotal += $cantidad * $producto->precUniProd;
+            $subtotalSinDescuento = $cantidad * $producto->precUniProd;
+            $montoDescuento = $subtotalSinDescuento * ($descuento / 100);
+            $subtotal += $subtotalSinDescuento - $montoDescuento;
+            
         }
 
         $igv = $subtotal * 0.18;
@@ -163,7 +213,16 @@ class VendedorController extends Controller
         $venta->metPagVent = $request->metPagVent;
         $venta->IDUsu = auth()->id();
 
-        if ($request->tipo_cliente === 'natural' && $request->cliente_id) {
+        // Si es cliente no registrado
+        if ($request->tipo_cliente === 'none') {
+            session([
+                'cliente_temporal' => [
+                    'nombre' => $request->nombre_cliente,
+                    'apellido' => $request->apellido_cliente,
+                ]
+            ]);
+        }
+        elseif ($request->tipo_cliente === 'natural' && $request->cliente_id) {
             $idParts = explode('-', $request->cliente_id);
             if (count($idParts) === 2 && $idParts[0] === 'N') {
                 $venta->IDClieNat = (int)$idParts[1]; 
@@ -181,12 +240,17 @@ class VendedorController extends Controller
         foreach ($request->productos as $item) {
             $producto = Producto::find($item['IDProd']);
             $cantidad = $item['cantidad'];
+            $descuento = $item['descuento'] ?? 0;
             $precio = $producto->precUniProd;
-            $subtotalItem = $cantidad * $precio;
+            
+            $subtotalSinDescuento = $cantidad * $precio;
+            $montoDescuento = $subtotalSinDescuento * ($descuento / 100);
+            $subtotalItem = $subtotalSinDescuento - $montoDescuento;
 
             DetalleVenta::create([
                 'prec_uni' => $precio,
                 'subtotal' => $subtotalItem,
+                'descuento' => $descuento,
                 'IDProd' => $producto->IDProd,
                 'IDVent' => $venta->IDVent,
             ]);
@@ -195,7 +259,7 @@ class VendedorController extends Controller
             $producto->stockProd -= $cantidad;
             $producto->save();
         }
-
+        
         // Crear comprobante
         $comprobante = new Comprobante();
         $comprobante->tipCompr = $request->tipo_comprobante;
@@ -214,71 +278,65 @@ class VendedorController extends Controller
     public function verVenta($id)
     {
         $venta = Venta::with(['detalleVentas.producto', 'usuario.empleado', 'clienteNatural', 'clienteJuridica', 'comprobantes'])
+            
             ->findOrFail($id);
         
         return view('vendedor.ventas.show', compact('venta'));
     }
 
-    // Métodos para clientes
-    public function clientesNaturales()
+    // Método para consultar DNI (API)
+    public function consultarDni(Request $request)
     {
-        $clientes = ClienteNatural::all();
-        return view('vendedor.clientes.naturales', compact('clientes'));
-    }
-
-    public function crearClienteNatural()
-    {
-        return view('vendedor.clientes.crear-natural');
-    }
-
-    public function guardarClienteNatural(Request $request)
-    {
-        $request->validate([
-            'docIdenClieNat' => 'required|string|max:15|unique:cliente_natural,docIdenClieNat',
-            'nomClieNat' => 'required|string|max:100',
-            'apelClieNat' => 'required|string|max:100',
+        $request->validate(['dni' => 'required|digits:8']);
+        
+        $data = $this->sunatService->consultarDni($request->dni);
+        
+        if (isset($data['error'])) {
+            \Log::warning("Fallo consulta DNI {$request->dni}: " . ($data['api_error'] ?? ''));
+            return response()->json([
+                'success' => false,
+                'error' => $data['error'],
+                'debug' => $data['api_error'] ?? null
+            ], 400);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'nombres' => $data['nombres'],
+            'apellidos' => trim($data['apellidoPaterno'] . ' ' . $data['apellidoMaterno']),
+            'direccion' => $data['direccion']
         ]);
-
-        ClienteNatural::create($request->all());
-
-        return redirect()->route('vendedor.clientes.naturales')
-            ->with('success', 'Cliente natural registrado correctamente');
     }
 
-    public function clientesJuridicos()
+    // Método para consultar RUC (API)
+    public function consultarRuc(Request $request)
     {
-        $clientes = ClienteJuridica::all();
-        return view('vendedor.clientes.juridicos', compact('clientes'));
-    }
-
-    public function crearClienteJuridico()
-    {
-        return view('vendedor.clientes.crear-juridico');
-    }
-
-    public function guardarClienteJuridico(Request $request)
-    {
-        $request->validate([
-            'razSociClieJuri' => 'required|string|max:100',
-            'dirfiscClieJuri' => 'required|string',
-            'rucClieJuri' => 'required|string|size:11|unique:cliente_juridica,rucCieJuri',
-            'nomComClieJuri' => 'nullable|string|max:100',
-            'persRespClieJuri' => 'nullable|string|max:100',
-            'rubrClieJuri' => 'nullable|string|max:100',
+        $request->validate(['ruc' => 'required|digits:11']);
+        
+        $data = $this->sunatService->consultarRuc($request->ruc);
+        
+        if (isset($data['error'])) {
+            \Log::error("Fallo consulta RUC {$request->ruc}: " . ($data['api_error'] ?? ''));
+            return response()->json([
+                'success' => false,
+                'error' => $data['error'],
+                'debug' => $data['api_error'] ?? null
+            ], 400);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'razon_social' => $data['razonSocial'] ?? $data['nombre'] ?? '',
+            'direccion' => $data['direccion'] ?? $data['direccionCompleta'] ?? '',
+            'estado' => $data['estado'] ?? $data['condicion'] ?? 'ACTIVO'
         ]);
-
-        ClienteJuridica::create($request->all());
-
-        return redirect()->route('vendedor.clientes.juridicos')
-            ->with('success', 'Cliente jurídico registrado correctamente');
     }
-
     // Métodos para devoluciones
     public function devoluciones()
     {
-        $user = Auth::user();
-        $devoluciones = Devolucion::with(['venta', 'venta.clienteNatural', 'venta.clienteJuridica'])
-            ->where('IDUsu', $user->id)
+        $devoluciones = Devolucion::with(['venta' => function($query) {
+                $query->with(['clienteNatural', 'clienteJuridica']);
+            }])
             ->orderBy('fechDev', 'desc')
             ->get();
         
@@ -300,41 +358,66 @@ class VendedorController extends Controller
             'motivDev' => 'required|string',
         ]);
 
-        $venta = Venta::findOrFail($ventaId);
-        $user = Auth::user();
-        $totalRembolso = 0;
+        DB::beginTransaction();
+        try {
+            if (Devolucion::where('IDVent', $ventaId)->exists()) {
+                throw new \Exception("Ya existe una devolución registrada para esta venta");
+            }
+            $venta = Venta::findOrFail($ventaId);
+            $user = Auth::user();
+            $totalRembolso = 0;
 
-        // Verificar que los productos pertenezcan a la venta
-        foreach ($request->productos as $item) {
-            $detalle = DetalleVenta::where('IDVent', $ventaId)
-                ->where('IDProd', $item['IDProd'])
-                ->first();
+            // Verificar que los productos pertenezcan a la venta
+            foreach ($request->productos as $producto) {
+                $productoId = $producto['IDProd'];
+                $cantidad = $producto['cantidad'];
 
-            if (!$detalle) {
-                return back()->withErrors(['productos' => 'Uno o más productos no pertenecen a esta venta']);
+                $detalle = DetalleVenta::where('IDVent', $ventaId)
+                    ->where('IDProd', $productoId)
+                    ->first();
+
+                if (!$detalle) {
+                    $nombreProducto = Producto::find($productoId)->nombreProd ?? 'ID '.$productoId;
+                    throw new \Exception("El producto '$nombreProducto' no pertenece a esta venta");
+                }
+
+                if ($cantidad >  $cantidadSinDescuento = $detalle->prec_uni != 0 
+                                ? round(($detalle->subtotal / (1 - ($detalle->descuento ?? 0)/100)) / $detalle->prec_uni)
+                                : 0 ) {
+                    throw new \Exception("La cantidad a devolver ($cantidad) no puede ser mayor a la vendida ({intval($detalle->subtotal / $detalle->prec_uni)})");
+                }
+
+                $subtotal = $cantidad * $detalle->prec_uni;
+                $totalRembolso += $subtotal;
             }
 
-            $totalRembolso += $item['cantidad'] * $detalle->prec_uni;
+            // Crear la devolución
+            $devolucion = new Devolucion();
+            $devolucion->fechDev = now();
+            $devolucion->motivDev = $request->motivDev;
+            $devolucion->totalRembDev = $totalRembolso;
+            $devolucion->IDUsu = $user->id;
+            $devolucion->IDVent = $ventaId;
+            
+            $devolucion->save();
+
+            // Actualizar stock de productos
+            foreach ($request->productos as $producto) {
+                Producto::where('IDProd', $producto['IDProd'])
+                    ->increment('stockProd', $producto['cantidad']);
+            }
+
+            DB::commit();
+            
+            return redirect()->route('vendedor.devoluciones')
+                ->with('success', 'Devolución registrada correctamente');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()
+                ->withInput()
+                ->withErrors(['error' => $e->getMessage()]);
         }
-
-        // Crear la devolución
-        $devolucion = new Devolucion();
-        $devolucion->fechDev = now();
-        $devolucion->motivDev = $request->motivDev;
-        $devolucion->totalRembDev = $totalRembolso;
-        $devolucion->IDUsu = $user->id;
-        $devolucion->IDVent = $ventaId;
-        $devolucion->save();
-
-        // Actualizar stock de productos
-        foreach ($request->productos as $item) {
-            $producto = Producto::find($item['IDProd']);
-            $producto->stockProd += $item['cantidad'];
-            $producto->save();
-        }
-
-        return redirect()->route('vendedor.devoluciones')
-            ->with('success', 'Devolución registrada correctamente');
     }
 
     // Métodos para cierre de caja
@@ -343,7 +426,7 @@ class VendedorController extends Controller
         $user = Auth::user();
         $hoy = now()->format('Y-m-d');
         
-        $ventas = Venta::where('IDUsu', $user->id)
+        $ventas = Venta::where('IDUsu', auth()->id())
             ->whereDate('fechVent', $hoy)
             ->get();
 
@@ -364,7 +447,12 @@ class VendedorController extends Controller
                 $q->where('IDUsu', $user->id)->whereDate('fechVent', $hoy);
             })
             ->count();
-
+        $proformas = Comprobante::where('tipCompr', 'proforma')
+            ->whereHas('venta', function($q) use ($user, $hoy) {
+                $q->where('IDUsu', $user->id)->whereDate('fechVent', $hoy);
+            })
+            ->count();
+        
         return view('vendedor.cierre-caja', compact(
             'ventas',
             'totalEfectivo',
@@ -374,6 +462,7 @@ class VendedorController extends Controller
             'totalGeneral',
             'boletas',
             'facturas',
+            'proformas',
             'hoy'
         ));
     }
@@ -381,54 +470,88 @@ class VendedorController extends Controller
     // Método para validar con SUNAT
     protected function validarConSunat(Venta $venta, Comprobante $comprobante)
     {
-        // Aquí implementarías la lógica para conectar con la API de SUNAT
-        // Esto es un ejemplo simplificado
-        
-        $cliente = null;
-        $tipoDocumento = '';
-        $numeroDocumento = '';
-        
-        if ($venta->IDClieNat) {
-            $cliente = ClienteNatural::find($venta->IDClieNat);
-            $tipoDocumento = 'DNI';
-            $numeroDocumento = $cliente->docIdenClieNat;
-        } elseif ($venta->IDCieJuri) {
-            $cliente = ClienteJuridica::find($venta->IDCieJuri);
-            $tipoDocumento = 'RUC';
-            $numeroDocumento = $cliente->rucCieJuri;
+        $cliente = $venta->IDClieNat 
+            ? ClienteNatural::find($venta->IDClieNat)
+            : ClienteJuridica::find($venta->IDClieJuri);
+
+        if (!$cliente) {
+            Log::error('Cliente no encontrado para la venta ID: ' . $venta->IDVent);
+            return false;
         }
-        
-        // Datos para enviar a SUNAT
-        $datosSunat = [
-            'tipo_comprobante' => $comprobante->tipCompr,
-            'serie' => 'F001',
+
+        $nombreCliente = $venta->IDClieNat 
+            ? $cliente->nomClieNat . ' ' . $cliente->apelClieNat 
+            : $cliente->razSociClieJuri;
+
+        $tipoDoc = $venta->IDClieNat ? '1' : '6'; // 1 = DNI, 6 = RUC
+        $nroDoc = $venta->IDClieNat ? $cliente->docIdenClieNat : $cliente->rucClieJuri;
+
+        $serie = $comprobante->tipCompr === 'factura' ? 'FFF1' : 'BBB1';
+        $tipoComprobante = $comprobante->tipCompr === 'factura' ? '1' : '2';
+
+        $items = [];
+        $total_gravada = 0;
+        $total_igv = 0;
+
+        foreach ($venta->detalleVentas as $detalle) {
+            $producto = $detalle->producto;
+            $cantidad = $detalle->subtotal / $detalle->prec_uni;
+
+            $valor_unitario = round($detalle->prec_uni / 1.18, 2);
+            $subtotal = round($valor_unitario * $cantidad, 2);
+            $igv = round($subtotal * 0.18, 2);
+            $total = round($subtotal + $igv, 2);
+
+            $total_gravada += $subtotal;
+            $total_igv += $igv;
+
+            $items[] = [
+                'unidad_de_medida' => 'NIU',
+                'codigo' => $producto->IDProd,
+                'descripcion' => $producto->nomProd,
+                'cantidad' => $cantidad,
+                'valor_unitario' => number_format($valor_unitario, 2, '.', ''),
+                'precio_unitario' => number_format($detalle->prec_uni, 2, '.', ''),
+                'subtotal' => number_format($subtotal, 2, '.', ''),
+                'tipo_de_igv' => '1',
+                'igv' => number_format($igv, 2, '.', ''),
+                'total' => number_format($total, 2, '.', ''),
+            ];
+        }
+
+        $data = [
+            'operacion' => 'generar_comprobante',
+            'tipo_de_comprobante' => $tipoComprobante,
+            'serie' => $serie,
             'numero' => $comprobante->IDCompr,
-            'fecha_emision' => $venta->fechVent->format('Y-m-d'),
-            'total' => $venta->totalVent,
-            'cliente_tipo_documento' => $tipoDocumento,
-            'cliente_numero_documento' => $numeroDocumento,
-            'cliente_denominacion' => $cliente ? ($cliente instanceof ClienteNatural ? 
-                $cliente->nomClieNat . ' ' . $cliente->apelClieNat : 
-                $cliente->raz_socCieJuri) : '',
+            'sunat_transaction' => '1',
+            'cliente_tipo_de_documento' => $tipoDoc,
+            'cliente_numero_de_documento' => $nroDoc,
+            'cliente_denominacion' => $nombreCliente,
+            'fecha_de_emision' => $venta->fechVent->format('Y-m-d'),
+            'moneda' => '1',
+            'total_gravada' => number_format($total_gravada, 2, '.', ''),
+            'total_igv' => number_format($total_igv, 2, '.', ''),
+            'total' => number_format($total_gravada + $total_igv, 2, '.', ''),
+            'items' => $items,
         ];
-        
-        // En producción, aquí harías una petición real a la API de SUNAT
-        // $response = Http::post('https://api.sunat.com/validar', $datosSunat);
-        
-        // Simulamos una respuesta exitosa
-        $response = [
-            'success' => true,
-            'codigo' => 'SUNAT-' . strtoupper(uniqid()),
-            'mensaje' => 'Comprobante validado correctamente',
-        ];
-        
-        if ($response['success']) {
-            $venta->codSunatVent = $response['codigo'];
-            $venta->save();
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Token ' . env('NUBEFACT_TOKEN'),
+        ])->post(env('NUBEFACT_URL'), $data);
+
+        $respuesta = $response->json();
             
-            return true;
+
+        if (isset($respuesta['errors'])) {
+            Log::error('Error al emitir comprobante SUNAT: ', $respuesta);
+            return false;
         }
-        
-        return false;
+
+        $venta->codSunatVent = $respuesta['serie'] . '-' . str_pad($respuesta['numero'], 8, '0', STR_PAD_LEFT);
+        $venta->save();
+
+        return true;
     }
+
 }

@@ -17,7 +17,10 @@ class Producto extends Model
         'estProd',
         'uniMedProd',
         'precUniProd',
+        'precUniComProd',
+        'totalComp',
         'stockProd',
+        'cantComProd',
         'stockMinProd',
         'IDCat',
         'IDprov'
@@ -28,11 +31,10 @@ class Producto extends Model
         return $this->belongsTo(Categoria::class, 'IDCat');
     }
 
-    public function proveedor()
+    public function ventas()
     {
-        return $this->belongsTo(Proveedor::class, 'IDprov');
+        return $this->hasMany(Venta::class, 'IDVent');
     }
-
     public function detalleVentas()
     {
         return $this->hasMany(DetalleVenta::class, 'IDProd');
@@ -41,5 +43,14 @@ class Producto extends Model
     public function detallePedidos()
     {
         return $this->hasMany(DetallePedido::class, 'IDProd');
+    }
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Calcula totalComp antes de guardar
+        static::saving(function ($producto) {
+            $producto->totalComp = round($producto->precUniComProd * $producto->cantComProd, 2);
+        });
     }
 }

@@ -6,6 +6,15 @@
         <div class="card-header">
             <h1>Crear Nueva Categoría</h1>
         </div>
+        @if($errors->any())
+            <div class="alert alert-danger">
+                <ul>
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div class="card-body">
             <form action="{{ route('admin.categorias.store') }}" method="POST">
                 @csrf

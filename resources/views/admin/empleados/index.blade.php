@@ -5,6 +5,29 @@
     <h1>Empleados</h1>
     <a href="{{ route('admin.empleados.create') }}" class="btn btn-primary mb-3">Nuevo Empleado</a>
     
+    <div class="card mb-4">
+        <div class="card-body p-2">
+            <form action="{{ route('admin.empleados') }}" method="GET" class="form-inline">
+                <div class="input-group w-100">
+                    <input type="text" name="search" class="form-control" 
+                        placeholder="Buscar por nombre, apellido o documento..." 
+                        value="{{ request('search') }}"
+                        aria-label="Buscar empleados">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        @if(request('search'))
+                        <a href="{{ route('admin.empleados') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Limpiar
+                        </a>
+                        @endif
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     @if(session('success'))
         <div class="alert alert-success">
             {{ session('success') }}

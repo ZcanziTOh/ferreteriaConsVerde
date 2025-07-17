@@ -15,6 +15,7 @@ class DetalleVenta extends Model
     protected $fillable = [
         'prec_uni',
         'subtotal',
+        'descuento',
         'IDProd',
         'IDVent'
     ];
@@ -27,5 +28,12 @@ class DetalleVenta extends Model
     public function venta()
     {
         return $this->belongsTo(Venta::class, 'IDVent');
+    }
+    public function getCantidadAttribute()
+    {
+        if ($this->prec_uni > 0) {
+            return intval($this->subtotal / $this->prec_uni);
+        }
+        return 0;
     }
 }

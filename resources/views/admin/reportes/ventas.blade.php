@@ -4,7 +4,18 @@
 <div class="container">
     <h1>Reporte de Ventas</h1>
     <p class="text-muted">Del {{ $fechaInicio }} al {{ $fechaFin }}</p>
-    
+            <style>
+                /* Estilos para impresión profesional */
+                @media print {
+                    @page {
+                        size: A4;
+                        margin: 0;
+                    }
+                    .no-print, .card-header, .card-footer, header, footer, .navbar {
+                        display: none !important;
+                    }
+                }
+            </style>
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
@@ -28,7 +39,7 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Fecha</th>
+                <th>Fecha y hora</th>
                 <th>Cliente</th>
                 <th>Vendedor</th>
                 <th>Total</th>
@@ -58,7 +69,27 @@
             @endforeach
         </tbody>
     </table>
-    
-    <a href="{{ route('admin.reportes') }}" class="btn btn-secondary">Volver</a>
+    <div class="card-footer text-right no-print">
+        <a href="{{ route('admin.reportes') }}" class="btn btn-secondary">Volver</a>
+        <button class="btn btn-primary" onclick="printComprobante()">Imprimir Reporte</button>
+    </div>
 </div>
+<script>
+    function printComprobante() {
+        // Ocultar elementos no deseados antes de imprimir
+        document.querySelectorAll('.no-print').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Activar la impresión
+        window.print();
+        
+        // Restaurar los elementos ocultos
+        setTimeout(() => {
+            document.querySelectorAll('.no-print').forEach(el => {
+                el.style.display = '';
+            });
+        }, 500);
+    }
+</script>
 @endsection

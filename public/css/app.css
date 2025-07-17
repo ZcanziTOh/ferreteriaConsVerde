@@ -225,6 +225,10 @@ footer {
 .forgot-password {
     color: #2e7d32;
     text-decoration: none;
+    display: block; /* Lo convierte en elemento de bloque */
+    text-align: center; /* Centra el texto */
+    margin: 1rem auto; /* Margen superior/inferior y auto para centrar */
+    width: fit-content; /* Ajusta el ancho al contenido */
 }
 
 .forgot-password:hover {

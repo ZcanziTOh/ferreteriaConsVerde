@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('productos', function (Blueprint $table) {
             $table->integer('IDProd')->autoIncrement();
             $table->string('nomProd', 50);
-            $table->char('estProd', 1);
-            $table->string('uniMedProd', 10);
+            $table->string('estProd', 11);
+            $table->string('uniMedProd', 20);
             $table->decimal('precUniProd', 10, 2);
             $table->integer('stockProd')->default(0);
             $table->integer('stockMinProd')->default(0);
@@ -24,7 +24,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('IDCat')->references('IDCat')->on('categorias');
-            $table->foreign('IDprov')->references('IDprov')->on('proveedores');
         });
     }
 

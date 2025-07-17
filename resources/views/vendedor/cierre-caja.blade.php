@@ -6,6 +6,13 @@
         <div class="card-header">
             <h1>Cierre de Caja - {{ $hoy }}</h1>
         </div>
+        <style>
+            @media print {
+                .no-print, .card-footer, header, footer, .navbar {
+                        display: none !important;
+                }
+            }
+        </style>
         
         <div class="card-body">
             <div class="row mb-4">
@@ -14,6 +21,7 @@
                     <p><strong>Total Ventas:</strong> {{ $ventas->count() }}</p>
                     <p><strong>Boletas Emitidas:</strong> {{ $boletas }}</p>
                     <p><strong>Facturas Emitidas:</strong> {{ $facturas }}</p>
+                    <p><strong>Proformas Emitidas:</strong> {{ $proformas }}</p>
                 </div>
                 <div class="col-md-6">
                     <h4>Totales por Método de Pago</h4>
@@ -48,6 +56,8 @@
                                     {{ $venta->clienteNatural->nomClieNat }} {{ $venta->clienteNatural->apelClieNat }}
                                 @elseif($venta->clienteJuridica)
                                     {{ $venta->clienteJuridica->razSociClieJuri }}
+                                @elseif(session('cliente_temporal'))
+                                    {{ strtoupper(session('cliente_temporal.nombre')) }} {{ strtoupper(session('cliente_temporal.apellido')) }}
                                 @else
                                     Sin cliente
                                 @endif

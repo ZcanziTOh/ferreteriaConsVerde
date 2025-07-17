@@ -33,7 +33,7 @@ class AuthController extends Controller
         Auth::login($user);
 
         if ($user->isAdmin()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->route('admin.dashboardTec');
         } elseif ($user->isVendedor()) {
             return redirect()->route('vendedor.dashboard');
         }

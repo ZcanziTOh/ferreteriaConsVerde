@@ -2,8 +2,13 @@
 
 @section('content')
 <div class="container">
-    <h1>Ventas</h1>
-    
+    <h1>Panel de Ventas</h1>
+    <a href="{{ route('admin.cotizaciones.index') }}" class="btn btn-primary">
+        <i class="bi bi-file-earmark-text"></i> Nueva Cotización
+    </a>
+    <a href="{{ route('admin.ventas.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nueva Venta
+    </a>
     <table class="table table-bordered">
         <thead>
             <tr>
@@ -25,7 +30,7 @@
                     @elseif($venta->clienteJuridica)
                         {{ $venta->clienteJuridica->razSociClieJuri }}
                     @else
-                        Cliente no registrado
+                        <span style="text-transform: uppercase;">Cliente sin datos</span>
                     @endif
                 </td>
                 <td>S/ {{ number_format($venta->totalVent, 2) }}</td>

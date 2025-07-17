@@ -84,7 +84,7 @@
         
         <div class="card-footer text-right">
             <button class="btn btn-primary" onclick="window.print()">Imprimir Cotización</button>
-            <a href="{{ route('vendedor.cotizaciones.index') }}" class="btn btn-secondary">Volver</a>
+            <a href="{{ route('admin.cotizaciones.index') }}" class="btn btn-secondary">Volver</a>
         </div>
     </div>
 </div>

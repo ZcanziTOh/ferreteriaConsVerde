@@ -26,14 +26,28 @@
             <input type="text" class="form-control" id="uniMedProd" name="uniMedProd" value="{{ $producto->uniMedProd }}" required>
         </div>
         
+        <!-- Nuevo campo: Precio unitario de compra -->
         <div class="form-group">
-            <label for="precUniProd">Precio Unitario</label>
-            <input type="number" step="0.01" class="form-control" id="precUniProd" name="precUniProd" value="{{ $producto->precUniProd }}" required>
+            <label for="precUniComProd">Precio Unitario de Compra </label>
+            <input type="number" step="0.01" class="form-control" id="precUniComProd" name="precUniComProd" 
+                   value="{{ $producto->precUniComProd }}" required>
         </div>
         
         <div class="form-group">
-            <label for="stockProd">Stock</label>
-            <input type="number" class="form-control" id="stockProd" name="stockProd" value="{{ $producto->stockProd }}" required>
+            <label for="precUniProd">Precio Unitario de Venta</label>
+            <input type="number" step="0.01" class="form-control" id="precUniProd" name="precUniProd" 
+                   value="{{ $producto->precUniProd }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="cantComProd">Cantidad Comprada</label>
+            <input type="number" class="form-control" id="cantComProd" name="cantComProd" required min="1">
+        </div>
+
+        <div class="form-group">
+            <label for="stockProd">Stock Inicial</label>
+            <input type="number" class="form-control" id="stockProd" name="stockProd" required min="1">
+            <small class="form-text text-muted">Normalmente igual a la cantidad comprada</small>
         </div>
         
         <div class="form-group">
@@ -47,17 +61,6 @@
                 @foreach($categorias as $categoria)
                 <option value="{{ $categoria->IDCat }}" {{ $producto->IDCat == $categoria->IDCat ? 'selected' : '' }}>
                     {{ $categoria->nomCat }}
-                </option>
-                @endforeach
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label for="IDprov">Proveedor</label>
-            <select class="form-control" id="IDprov" name="IDprov" required>
-                @foreach($proveedores as $proveedor)
-                <option value="{{ $proveedor->IDprov }}" {{ $producto->IDprov == $proveedor->IDprov ? 'selected' : '' }}>
-                    {{ $proveedor->razonSocialProv }}
                 </option>
                 @endforeach
             </select>

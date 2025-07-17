@@ -4,7 +4,7 @@
 <div class="container">
     <h1>Generar Cotización</h1>
     
-    <form action="{{ route('vendedor.cotizaciones.generar') }}" method="POST">
+    <form action="{{ route('admin.cotizaciones.generar') }}" method="POST">
         @csrf
         
         <div class="row mb-4">
@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loading.classList.remove('d-none');
             
             try {
-                const response = await fetch('{{ route("vendedor.consultar-dni") }}', {
+                const response = await fetch('{{ route("admin.consultar-dni") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -365,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loading.classList.remove('d-none');
             
             try {
-                const response = await fetch('{{ route("vendedor.consultar-ruc") }}', {
+                const response = await fetch('{{ route("admin.consultar-ruc") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

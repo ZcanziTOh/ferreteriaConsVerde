@@ -3,7 +3,15 @@
 @section('content')
 <div class="container">
     <h1>Crear Producto</h1>
-    
+    @if($errors->any())
+        <div class="alert alert-danger">
+            <ul>
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     <form action="{{ route('admin.productos.store') }}" method="POST">
         @csrf
         
@@ -25,14 +33,26 @@
             <input type="text" class="form-control" id="uniMedProd" name="uniMedProd" required>
         </div>
         
+        <!-- Nuevo campo: Precio unitario de compra -->
         <div class="form-group">
-            <label for="precUniProd">Precio Unitario</label>
+            <label for="precUniComProd">Precio Unitario de Compra </label>
+            <input type="number" step="0.01" class="form-control" id="precUniComProd" name="precUniComProd" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="precUniProd">Precio Unitario de Venta</label>
             <input type="number" step="0.01" class="form-control" id="precUniProd" name="precUniProd" required>
         </div>
         
         <div class="form-group">
-            <label for="stockProd">Stock</label>
-            <input type="number" class="form-control" id="stockProd" name="stockProd" required>
+            <label for="cantComProd">Cantidad Comprada</label>
+            <input type="number" class="form-control" id="cantComProd" name="cantComProd" required min="1">
+        </div>
+
+        <div class="form-group">
+            <label for="stockProd">Stock Inicial</label>
+            <input type="number" class="form-control" id="stockProd" name="stockProd" required min="1">
+            <small class="form-text text-muted">Normalmente igual a la cantidad comprada</small>
         </div>
         
         <div class="form-group">
@@ -45,15 +65,6 @@
             <select class="form-control" id="IDCat" name="IDCat" required>
                 @foreach($categorias as $categoria)
                 <option value="{{ $categoria->IDCat }}">{{ $categoria->nomCat }}</option>
-                @endforeach
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label for="IDprov">Proveedor</label>
-            <select class="form-control" id="IDprov" name="IDprov" required>
-                @foreach($proveedores as $proveedor)
-                <option value="{{ $proveedor->IDprov }}">{{ $proveedor->razonSocialProv }}</option>
                 @endforeach
             </select>
         </div>

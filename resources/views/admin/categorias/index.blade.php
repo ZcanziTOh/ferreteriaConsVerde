@@ -36,7 +36,7 @@
                 <td>{{ $categoria->nomCat }}</td>
                 <td>{{ $categoria->descCat }}</td>
                 <td>
-                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editarCategoriaModal{{ $categoria->IDCat }}">Editar</button>
+                    <a href="{{ route('admin.categorias.edit', $categoria->IDCat)  }}" class="btn btn-sm btn-warning">Editar</a>
                     <form action="{{ route('admin.categorias.destroy', $categoria->IDCat) }}" method="POST" style="display:inline;">
                         @csrf
                         @method('DELETE')
